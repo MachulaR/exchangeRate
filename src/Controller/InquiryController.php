@@ -2,7 +2,11 @@
 
 namespace App\Controller;
 
+use App\Entity\DTO\CurrencyInquiryDTO;
+use App\Form\CurrencyInquiryType;
+use DateTime;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use GuzzleHttp\Client;
 
@@ -20,18 +24,54 @@ class InquiryController extends AbstractController
     /**
      * @Route("/", name="inquiry")
      */
-    public function mainPage()
+    public function mainPage(Request $request)
     {
-        $client = new Client([
-            'base_uri' => self::NBP_API,
-        ]);
 
-        $response = $client->request('GET', 'exchangerates/rates/c/USD/2020-01-02/2020-01-08/?format=json');
-        $responseAPI = json_decode($response->getBody()->getContents());
-//        dump($responseAPI);die;
+        $currencyInquiryDTO = new CurrencyInquiryDTO();
+        $form = $this->createForm(CurrencyInquiryType::class, $currencyInquiryDTO);
+
+        $form->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid())
+        {
+
+            $currencyInquiry = $form->getData();
+
+            $startDate = $currencyInquiry->getStartAt()->format('Y-m-d');
+            $endDate = $currencyInquiry->getEndAt()->format('Y-m-d');
+            $currency = $currencyInquiry->getCurrency();
+
+            if(strtotime($startDate)<strtotime(self::FIRST_DATA_IN_API)){
+                return null;
+            }
+
+            $today = new DateTime('NOW');
+            $today = $today->format('Y-m-d');
+            if(strtotime($startDate)>strtotime($endDate) || strtotime($endDate)>strtotime($today)){
+                return null;
+            }
+
+            $client = new Client([
+                'base_uri' => self::NBP_API,
+            ]);
+
+            $uri = 'exchangerates/rates/c/'.$currency.'/'.$startDate.'/'.$endDate.self::DATA_FORMAT_API;
+            $response = $client->request('GET', $uri);
+            $responseAPI = json_decode($response->getBody()->getContents());
+
+            if($responseAPI != NULL)
+            {
+                $viewData = [
+                    'form' => $form->createView(),
+                    'data' => $responseAPI,
+                ];
+
+                return $this->render('inquiry.html.twig', $viewData);
+
+            }
+        }
 
         $viewData = [
-            'data' => $responseAPI,
+            'form' => $form->createView(),
         ];
 
 
