@@ -1,1 +1,47 @@
 {% extends 'base.html.twig' %}
+
+{% block body %}
+    <div class="container">
+        <div>
+            {% if data is defined %}
+                <table class="table table-striped table-sm text-center">
+                    <thead>
+                    <tr class="text-center">
+                        <th>#</th> <th>date</th> <th>buy</th> <th>+-</th> <th>sell</th> <th>+-</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% set orderNumber = 1 %}
+                    {% for rate in data.rates %}
+                        <tr>
+                            <td>{{ orderNumber }}</td>
+                            <td>{{ rate.effectiveDate }}</td>
+                            <td>{{ rate.bid }}</td>
+                            <td>
+                                {% if bidValue is defined %}
+                                    {{ (rate.bid-bidValue)<0 ? '<span class="redColor">' : '<span class="greenColor">'}}
+                                    {{(rate.bid-bidValue)|number_format(4) }}</span>
+                                {% else %}
+                                    {{ 'no data' }}
+                                {% endif %}
+                            </td>
+                            <td>{{ rate.ask }}</td>
+                            <td>
+                                {% if askValue is defined %}
+                                    {{ (rate.ask-askValue)<0 ? '<span class="redColor">' : '<span class="greenColor">' }}
+                                    {{ (rate.ask-askValue)|number_format(4) }}</span>
+                                {% else %}
+                                    {{ 'no data' }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% set bidValue = rate.bid %}
+                        {% set askValue = rate.ask %}
+                        {% set orderNumber = orderNumber+1 %}
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
