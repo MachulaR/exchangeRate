@@ -23,10 +23,11 @@ class InquiryController extends AbstractController
      */
     public function mainPage(Request $request)
     {
-
         $currencyInquiryDTO = new CurrencyInquiryDTO();
         $form = $this->createForm(CurrencyInquiryType::class, $currencyInquiryDTO);
-
+        $viewData = [
+            'form' => $form->createView(),
+        ];
         $form->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid())
         {
@@ -34,23 +35,11 @@ class InquiryController extends AbstractController
             $currencyInquiryDTO = $form->getData();
             $responseAPI = $this->currencyInquiryRepository->getDataFromApi($currencyInquiryDTO);
 
-
             if($responseAPI != NULL)
             {
-                $viewData = [
-                    'form' => $form->createView(),
-                    'data' => $responseAPI,
-                ];
-
-                return $this->render('inquiry.html.twig', $viewData);
-
+                $viewData['data'] = $responseAPI;
             }
         }
-
-        $viewData = [
-            'form' => $form->createView(),
-        ];
-
 
         return $this->render('inquiry.html.twig', $viewData);
     }

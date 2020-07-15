@@ -37,13 +37,7 @@ class CurrencyInquiryRepository
 
         $this->setStartDateAtFinancialExchangeDay($currencyInquiryDTO);
 
-        $client = new Client([
-            'base_uri' => self::NBP_API,
-        ]);
-
-        $uri = 'exchangerates/rates/c/'.$currencyInquiryDTO->getCurrency().'/'.$currencyInquiryDTO->getStartAt().'/'.$currencyInquiryDTO->getEndAt().self::DATA_FORMAT_API;
-        $response = $client->request('GET', $uri);
-        $responseAPI = json_decode($response->getBody()->getContents());
+        $responseAPI = $this->sendRequestToApi($currencyInquiryDTO);
 
         return $responseAPI;
     }
@@ -91,5 +85,46 @@ class CurrencyInquiryRepository
         if(strtotime($currencyInquiryDTO->getStartAt())>strtotime($currencyInquiryDTO->getEndAt()) || strtotime($currencyInquiryDTO->getEndAt())>strtotime($today)){
             throw new DateException();
         }
+    }
+
+    private function sendRequestToApi(CurrencyInquiryDTO $currencyInquiryDTO)
+    {
+        $client = new Client([
+            'base_uri' => self::NBP_API,
+        ]);
+
+        $numberOfQueriesToApi = $this->divideQuery($currencyInquiryDTO);
+        $rates = [];
+        for ($i =0;$i<$numberOfQueriesToApi;$i++)
+        {
+            $helpData = date('Y-m-d',strtotime($currencyInquiryDTO->getStartAt() .' +'.self::MAX_DAYS_FOR_QUERY.'day'));
+
+            if (strtotime($currencyInquiryDTO->getEndAt())-(strtotime($helpData)) > 0)
+            {
+                $uri = 'exchangerates/rates/c/'.$currencyInquiryDTO->getCurrency().'/'.$currencyInquiryDTO->getStartAt().'/'.$helpData.self::DATA_FORMAT_API;
+                $currencyInquiryDTO->setStartAt(date('Y-m-d',strtotime($helpData .' +1day')));
+            } else {
+                $uri = 'exchangerates/rates/c/'.$currencyInquiryDTO->getCurrency().'/'.$currencyInquiryDTO->getStartAt().'/'.$currencyInquiryDTO->getEndAt().self::DATA_FORMAT_API;
+            }
+
+            $response = $client->request('GET', $uri);
+            $responseAPI = json_decode($response->getBody()->getContents());
+            $rates = array_merge($rates, $responseAPI->rates);
+        }
+        $responseAPI->rates = $rates;
+        return $responseAPI;
+    }
+
+    private function divideQuery(CurrencyInquiryDTO $currencyInquiryDTO)
+    {
+        $diff = strtotime($currencyInquiryDTO->getEndAt())-strtotime($currencyInquiryDTO->getStartAt());
+        $diff = $diff / (60*60*24);
+        if ($diff>self::MAX_DAYS_FOR_QUERY){
+            $numberOfLoops = ceil($diff/self::MAX_DAYS_FOR_QUERY);
+        } else {
+            $numberOfLoops = 1;
+        }
+
+        return $numberOfLoops;
     }
 }
