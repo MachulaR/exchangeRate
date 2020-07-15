@@ -3,8 +3,8 @@
 namespace App\Repository;
 
 use App\Entity\DTO\CurrencyInquiryDTO;
+use App\Exception\DateException;
 use DateTime;
-use Doctrine\ORM\EntityRepository;
 use GuzzleHttp\Client;
 
 class CurrencyInquiryRepository
@@ -24,13 +24,12 @@ class CurrencyInquiryRepository
         $endDate = $currencyInquiryDTO->getEndAt()->format('Y-m-d');
         $currency = $currencyInquiryDTO->getCurrency();
 
-        if(strtotime($startDate)<strtotime(self::FIRST_DATA_IN_API)){
-            return null;
+        try
+        {
+            $this->checkDate($startDate, $endDate);
         }
-
-        $today = new DateTime('NOW');
-        $today = $today->format('Y-m-d');
-        if(strtotime($startDate)>strtotime($endDate) || strtotime($endDate)>strtotime($today)){
+        catch (DateException $dateException)
+        {
             return null;
         }
 
@@ -43,5 +42,18 @@ class CurrencyInquiryRepository
         $responseAPI = json_decode($response->getBody()->getContents());
 
         return $responseAPI;
+    }
+
+    private function checkDate($startDate, $endDate)
+    {
+        if(strtotime($startDate)<strtotime(self::FIRST_DATA_IN_API)){
+            throw new DateException();
+        }
+
+        $today = new DateTime('NOW');
+        $today = $today->format('Y-m-d');
+        if(strtotime($startDate)>strtotime($endDate) || strtotime($endDate)>strtotime($today)){
+            throw new DateException();
+        }
     }
 }
