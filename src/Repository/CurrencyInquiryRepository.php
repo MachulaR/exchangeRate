@@ -35,12 +35,9 @@ class CurrencyInquiryRepository
         $currencyInquiryDTO->setStartAt($currencyInquiryDTO->getStartAt()->format('Y-m-d'));
         $currencyInquiryDTO->setEndAt($currencyInquiryDTO->getEndAt()->format('Y-m-d'));
 
-        try
-        {
+        try {
             $this->checkIfDatesAreCorrect($currencyInquiryDTO);
-        }
-        catch (DateException $dateException)
-        {
+        } catch (DateException $dateException) {
             $this->flashBag->add('danger', 'Date must be between 2002-01-02 and today.');
             return null;
         }
@@ -55,7 +52,6 @@ class CurrencyInquiryRepository
     private function setStartDateAtFinancialExchangeDay(CurrencyInquiryDTO $currencyInquiryDTO)
     {
         if (strtotime($currencyInquiryDTO->getStartAt()) != strtotime(self::FIRST_DATA_IN_API)) {
-
             $client = new Client([
                 'base_uri' => self::NBP_API,
             ]);
@@ -65,25 +61,21 @@ class CurrencyInquiryRepository
             while ($break == false) {
                 $uri = 'exchangerates/rates/c/' . $currencyInquiryDTO->getCurrency() . '/' . $currencyInquiryDTO->getStartAt() . self::DATA_FORMAT_API;
 
-                try
-                {
+                try {
                     $client->request('GET', $uri);
                     $break = true;
                     if ($startDayChanged) {
-                        $this->flashBag->add('warning',
+                        $this->flashBag->add(
+                            'warning',
                             'The query started from the day the Financial exchange is closed. On that day, the data is identical to that for the last business day, it is '.
-                            $currencyInquiryDTO->getStartAt().', which was displayed.');
+                            $currencyInquiryDTO->getStartAt().', which was displayed.'
+                        );
                     }
-                }
-                catch (ClientException $exception)
-                {
-                    if ($exception->getCode() == 404)
-                    {
+                } catch (ClientException $exception) {
+                    if ($exception->getCode() == 404) {
                         $currencyInquiryDTO->setStartAt(date('Y-m-d', strtotime($currencyInquiryDTO->getStartAt() . ' -1day')));
                         $startDayChangedage = true;
-                    }
-                    else
-                    {
+                    } else {
                         $this->flashBag->add('danger', 'Problem occurred. Try again later.');
                         $break = true;
                     }
@@ -94,13 +86,13 @@ class CurrencyInquiryRepository
 
     private function checkIfDatesAreCorrect(CurrencyInquiryDTO $currencyInquiryDTO)
     {
-        if(strtotime($currencyInquiryDTO->getStartAt())<strtotime(self::FIRST_DATA_IN_API)){
+        if (strtotime($currencyInquiryDTO->getStartAt())<strtotime(self::FIRST_DATA_IN_API)) {
             throw new DateException();
         }
 
         $today = new DateTime('NOW');
         $today = $today->format('Y-m-d');
-        if(strtotime($currencyInquiryDTO->getStartAt())>strtotime($currencyInquiryDTO->getEndAt()) || strtotime($currencyInquiryDTO->getEndAt())>strtotime($today)){
+        if (strtotime($currencyInquiryDTO->getStartAt())>strtotime($currencyInquiryDTO->getEndAt()) || strtotime($currencyInquiryDTO->getEndAt())>strtotime($today)) {
             throw new DateException();
         }
     }
@@ -113,14 +105,12 @@ class CurrencyInquiryRepository
 
         $numberOfQueriesToApi = $this->divideQuery($currencyInquiryDTO);
         $rates = [];
-        for ($i =0;$i<$numberOfQueriesToApi;$i++)
-        {
-            $helpData = date('Y-m-d',strtotime($currencyInquiryDTO->getStartAt() .' +'.self::MAX_DAYS_FOR_QUERY.'day'));
+        for ($i =0; $i<$numberOfQueriesToApi; $i++) {
+            $helpData = date('Y-m-d', strtotime($currencyInquiryDTO->getStartAt() .' +'.self::MAX_DAYS_FOR_QUERY.'day'));
 
-            if (strtotime($currencyInquiryDTO->getEndAt())-(strtotime($helpData)) > 0)
-            {
+            if (strtotime($currencyInquiryDTO->getEndAt())-(strtotime($helpData)) > 0) {
                 $uri = 'exchangerates/rates/c/'.$currencyInquiryDTO->getCurrency().'/'.$currencyInquiryDTO->getStartAt().'/'.$helpData.self::DATA_FORMAT_API;
-                $currencyInquiryDTO->setStartAt(date('Y-m-d',strtotime($helpData .' +1day')));
+                $currencyInquiryDTO->setStartAt(date('Y-m-d', strtotime($helpData .' +1day')));
             } else {
                 $uri = 'exchangerates/rates/c/'.$currencyInquiryDTO->getCurrency().'/'.$currencyInquiryDTO->getStartAt().'/'.$currencyInquiryDTO->getEndAt().self::DATA_FORMAT_API;
             }
@@ -137,7 +127,7 @@ class CurrencyInquiryRepository
     {
         $diff = strtotime($currencyInquiryDTO->getEndAt())-strtotime($currencyInquiryDTO->getStartAt());
         $diff = $diff / (60*60*24);
-        if ($diff>self::MAX_DAYS_FOR_QUERY){
+        if ($diff>self::MAX_DAYS_FOR_QUERY) {
             $numberOfLoops = ceil($diff/self::MAX_DAYS_FOR_QUERY);
         } else {
             $numberOfLoops = 1;

@@ -57,7 +57,4 @@ class CurrencyInquiryDTO
     {
         $this->currency = $currency;
     }
-
-
 }
-

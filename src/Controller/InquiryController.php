@@ -29,19 +29,15 @@ class InquiryController extends AbstractController
             'form' => $form->createView(),
         ];
         $form->handleRequest($request);
-        if ($form->isSubmitted() && $form->isValid())
-        {
-
+        if ($form->isSubmitted() && $form->isValid()) {
             $currencyInquiryDTO = $form->getData();
             $responseAPI = $this->currencyInquiryRepository->getDataFromApi($currencyInquiryDTO);
 
-            if($responseAPI != NULL)
-            {
+            if ($responseAPI != null) {
                 $viewData['data'] = $responseAPI;
             }
         }
 
         return $this->render('inquiry.html.twig', $viewData);
     }
-
 }
