@@ -7,8 +7,7 @@ use App\Exception\DateException;
 use DateTime;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
-use GuzzleHttp\Handler\CurlHandler;
-use GuzzleHttp\HandlerStack;
+use Symfony\Component\HttpFoundation\Session\Flash\FlashBagInterface;
 
 class CurrencyInquiryRepository
 {
@@ -17,8 +16,18 @@ class CurrencyInquiryRepository
     const DATA_FORMAT_API = '/?format=json';
     const FIRST_DATA_IN_API = '2002-01-02';
 
-    public function __construct()
+    /**
+     * @var FlashBagInterface
+     */
+    private $flashBag;
+
+    /**
+     * MainController constructor.
+     * @param FlashBagInterface $flashBag
+     */
+    public function __construct(FlashBagInterface $flashBag)
     {
+        $this->flashBag = $flashBag;
     }
 
     public function getDataFromApi(CurrencyInquiryDTO $currencyInquiryDTO)
@@ -32,6 +41,7 @@ class CurrencyInquiryRepository
         }
         catch (DateException $dateException)
         {
+            $this->flashBag->add('danger', 'Date must be between 2002-01-02 and today.');
             return null;
         }
 
@@ -51,23 +61,31 @@ class CurrencyInquiryRepository
             ]);
 
             $break = false;
+            $startDayChanged = false;
             while ($break == false) {
                 $uri = 'exchangerates/rates/c/' . $currencyInquiryDTO->getCurrency() . '/' . $currencyInquiryDTO->getStartAt() . self::DATA_FORMAT_API;
 
                 try
                 {
-                    $response = $client->request('GET', $uri);
+                    $client->request('GET', $uri);
                     $break = true;
+                    if ($startDayChanged) {
+                        $this->flashBag->add('warning',
+                            'The query started from the day the Financial exchange is closed. On that day, the data is identical to that for the last business day, it is '.
+                            $currencyInquiryDTO->getStartAt().', which was displayed.');
+                    }
                 }
                 catch (ClientException $exception)
                 {
                     if ($exception->getCode() == 404)
                     {
                         $currencyInquiryDTO->setStartAt(date('Y-m-d', strtotime($currencyInquiryDTO->getStartAt() . ' -1day')));
+                        $startDayChangedage = true;
                     }
                     else
                     {
-                        //todo error occured (to handle)
+                        $this->flashBag->add('danger', 'Problem occurred. Try again later.');
+                        $break = true;
                     }
                 }
             }
